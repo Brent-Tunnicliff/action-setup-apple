@@ -36,6 +36,7 @@ runs:
       run: xcrun simctl list devices
 
     - name: Configure destination for target
+      id: destination
       uses: Brent-Tunnicliff/action-xcodebuild-destination-apple@v1
       with:
         platform: "${{ inputs.platform }}"
@@ -48,6 +49,7 @@ runs:
       run: sudo xcode-select -s "${{ inputs.xcode_path }}"
 
     - name: Configure test results path
+      id: test_results_config
       shell: bash
       run: |
         # We cannot use : in the time, otherwise `actions/upload-artifact` fails.
@@ -55,9 +57,9 @@ runs:
         TIMESTAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
         TARGET_COMPONENT="${{ inputs.platform }}${{ inputs.simulator_version }}"
         FILE_NAME="$PREFIX-$TARGET_COMPONENT-$TIMESTAMP.xcresult"
-        echo "test_result_file_name: $FILE_NAME"
-        echo "test_result_file_name=$FILE_NAME" >> "$GITHUB_OUTPUT"
+        echo "file_name: $FILE_NAME"
+        echo "file_name=$FILE_NAME" >> "$GITHUB_OUTPUT"
 
         PATH="$GITHUB_WORKSPACE/build/test/$FILE_NAME"
-        echo "test_result_path: $PATH"
-        echo "test_result_path=$PATH" >> "$GITHUB_OUTPUT"
+        echo "path: $PATH"
+        echo "path=$PATH" >> "$GITHUB_OUTPUT"

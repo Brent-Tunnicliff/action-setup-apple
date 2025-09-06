@@ -1,10 +1,63 @@
 # Copyright © 2025 Brent Tunnicliff <brent@tunnicliff.dev>
 
-name: 'Template action'
-description: 'Replace me'
+name: 'Setup for pipeline'
+description: 'Common setup for my Apple pipelines.'
+inputs:
+  platform:
+    description: 'The platform to be used, options are iOS, macOS, tvOS, watchOS, visionOS.'
+    type: string
+    required: true
+  simulator_version:
+    description: 'The simulator version for the platform destination.'
+    type: string
+    required: false
+    default: ''
+  test_results_prefix:
+    description: 'The prefix of the test results file name.'
+    type: string
+    required: false
+    default: 'test'
+  xcode_path:
+    description: 'Path to the version of Xcode to use.'
+    type: string
+    required: true
 runs:
   using: "composite"
   steps:
-    - name: Hello
+    # List all environment variables to help with debugging possible issues.
+    - name: List environment variables
       shell: bash
-      run: echo "Hello World!"
+      run: set
+
+    # If this destination is simulator, then list all simulators to help with debugging possible issues.
+    - name: List installed simulators
+      if: ${{ inputs.simulator_version != '' }}
+      shell: bash
+      run: xcrun simctl list devices
+
+    - name: Configure destination for target
+      uses: Brent-Tunnicliff/action-xcodebuild-destination-apple@v1
+      with:
+        platform: "${{ inputs.platform }}"
+        simulator_version: "${{ inputs.simulator_version }}"
+
+    - uses: actions/checkout@v4
+
+    - name: Set Xcode version
+      shell: bash
+      run: sudo xcode-select -s "${{ inputs.xcode_path }}"
+
+    - name: Configure test results path
+      shell: bash
+      run: |
+        # We cannot use : in the time, otherwise `actions/upload-artifact` fails.
+        PREFIX="${{ inputs.test_results_prefix }}"
+        TIMESTAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+        TARGET_COMPONENT="${{ inputs.platform }}${{ inputs.simulator_version }}"
+        FILE_NAME="$PREFIX-$TARGET_COMPONENT-$TIMESTAMP.xcresult"
+        echo "test_result_file_name: $FILE_NAME"
+        echo "test_result_file_name=$FILE_NAME" >> "$GITHUB_OUTPUT"
+
+        PATH="$GITHUB_WORKSPACE/build/test/$FILE_NAME"
+        echo "test_result_path: $PATH"
+        echo "test_result_path=$PATH" >> "$GITHUB_OUTPUT"

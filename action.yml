@@ -1,10 +1,80 @@
 # Copyright © 2025 Brent Tunnicliff <brent@tunnicliff.dev>
 
-name: 'Template action'
-description: 'Replace me'
+name: 'Setup for pipeline'
+description: 'Common setup for my Apple pipelines.'
+inputs:
+  platform:
+    description: 'The platform to be used, options are iOS, macOS, tvOS, watchOS, visionOS.'
+    type: string
+    required: true
+  simulator_version:
+    description: 'The simulator version for the platform destination.'
+    type: string
+    required: false
+    default: ''
+  test_results_prefix:
+    description: 'The prefix of the test results file name.'
+    type: string
+    required: false
+    default: 'test'
+  xcode_path:
+    description: 'Path to the version of Xcode to use.'
+    type: string
+    required: true
+outputs:
+  destination:
+    description: "The destination to be passed into the xcodebuild command."
+    value: ${{ steps.destination.outputs.destination }}
+  test_results_file_name:
+    description: "The file name of the test results bundle. Dynamically generated based on the inputs provided."
+    value: ${{ steps.test_results_config.outputs.file_name }}
+  test_results_path:
+    description: "The full path of the test results bundle."
+    value: ${{ steps.test_results_config.outputs.path }}
 runs:
   using: "composite"
   steps:
-    - name: Hello
+    # List all environment variables to help with debugging possible issues.
+    - name: List environment variables
       shell: bash
-      run: echo "Hello World!"
+      run: set
+
+    # If this destination is simulator, then list all simulators to help with debugging possible issues.
+    - name: List installed simulators
+      if: ${{ inputs.simulator_version != '' }}
+      shell: bash
+      run: xcrun simctl list devices
+
+    - name: Configure destination for target
+      id: destination
+      uses: Brent-Tunnicliff/action-xcodebuild-destination-apple@v1
+      with:
+        platform: "${{ inputs.platform }}"
+        simulator_version: "${{ inputs.simulator_version }}"
+
+    - uses: actions/checkout@v4
+
+    - name: Set Xcode version
+      shell: bash
+      env:
+        XCODE_PATH: ${{ inputs.xcode_path }}
+      run: sudo xcode-select -s "$XCODE_PATH"
+
+    - name: Configure test results path
+      id: test_results_config
+      shell: bash
+      env:
+        PLATFORM: ${{ inputs.platform }}
+        PREFIX: ${{ inputs.test_results_prefix }}
+        SIMULATOR_VERSION: ${{ inputs.simulator_version }}
+      run: |
+        # We cannot use : in the time, otherwise `actions/upload-artifact` fails.
+        TIMESTAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+        TARGET_COMPONENT="${PLATFORM}${SIMULATOR_VERSION}"
+        FILE_NAME="$PREFIX-$TARGET_COMPONENT-$TIMESTAMP.xcresult"
+        echo "file_name: $FILE_NAME"
+        echo "file_name=$FILE_NAME" >> "$GITHUB_OUTPUT"
+
+        PATH="$GITHUB_WORKSPACE/build/test/$FILE_NAME"
+        echo "path: $PATH"
+        echo "path=$PATH" >> "$GITHUB_OUTPUT"

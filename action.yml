@@ -47,7 +47,7 @@ runs:
 
     - name: Configure destination for target
       id: destination
-      uses: Brent-Tunnicliff/action-xcodebuild-destination-apple@0d7d0b443b47650ee8bb0de4316aa5deb7d0f572
+      uses: Brent-Tunnicliff/action-xcodebuild-destination-apple@v1
       with:
         platform: "${{ inputs.platform }}"
         simulator_version: "${{ inputs.simulator_version }}"

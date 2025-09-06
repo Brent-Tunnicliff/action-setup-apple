@@ -21,6 +21,16 @@ inputs:
     description: 'Path to the version of Xcode to use.'
     type: string
     required: true
+outputs:
+  destination:
+    description: "The destination to be passed into the xcodebuild command."
+    value: ${{ steps.destination.outputs.destination }}
+  test_results_file_name:
+    description: "The file name of the test results bundle. Dynamically generated based on the inputs provided."
+    value: ${{ steps.test_results_config.outputs.file_name }}
+  test_results_path:
+    description: "The full path of the test results bundle."
+    value: ${{ steps.test_results_config.outputs.path }}
 runs:
   using: "composite"
   steps:
@@ -46,16 +56,21 @@ runs:
 
     - name: Set Xcode version
       shell: bash
-      run: sudo xcode-select -s "${{ inputs.xcode_path }}"
+      env:
+        XCODE_PATH: ${{ inputs.xcode_path }}
+      run: sudo xcode-select -s "$XCODE_PATH"
 
     - name: Configure test results path
       id: test_results_config
       shell: bash
+      env:
+        PLATFORM: ${{ inputs.platform }}
+        PREFIX: ${{ inputs.test_results_prefix }}
+        SIMULATOR_VERSION: ${{ inputs.simulator_version }}
       run: |
         # We cannot use : in the time, otherwise `actions/upload-artifact` fails.
-        PREFIX="${{ inputs.test_results_prefix }}"
         TIMESTAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
-        TARGET_COMPONENT="${{ inputs.platform }}${{ inputs.simulator_version }}"
+        TARGET_COMPONENT="${PLATFORM}${SIMULATOR_VERSION}"
         FILE_NAME="$PREFIX-$TARGET_COMPONENT-$TIMESTAMP.xcresult"
         echo "file_name: $FILE_NAME"
         echo "file_name=$FILE_NAME" >> "$GITHUB_OUTPUT"

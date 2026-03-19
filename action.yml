@@ -52,7 +52,7 @@ runs:
         platform: "${{ inputs.platform }}"
         simulator_version: "${{ inputs.simulator_version }}"
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Set Xcode version
       shell: bash
